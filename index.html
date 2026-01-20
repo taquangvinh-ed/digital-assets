@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Include the CesiumJS JavaScript and CSS files -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.137/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.137/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<style>
+      html, body, #cesiumContainer {
+          width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+      }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <script type="module">
+
+
+function getDeviceType(){
+  const userAgent = navigator.userAgent;
+  if (/mobile/i.test(userAgent)) return "mobile";
+  if (/tablet|iPad/i.test(userAgent)) return "tablet";
+  return "desktop"
+}
+
+function isLowEndHardware(){
+  return window.devicePixelRatio < 1.5 || navigator.hardwareConcurrency < 4 || /arm/i.test(navigator.platform);
+}
+
+
+
+
+    // Your access token can be found at: https://ion.cesium.com/tokens.
+    // Replace `your_access_token` with your Cesium ion access token.
+    const defaultToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4ZjdmYjY4MS05YmM2LTRkZTgtYTUyMC0xYzhlOTE3N2EwNjIiLCJpZCI6Mzc4MzM3LCJpYXQiOjE3NjgzNjkxMTJ9.5PdIXm67qggL6I0GvrR1UcRmmrSihLcNNJTaLqzAUZU"
+    Cesium.Ion.defaultAccessToken = defaultToken;
+
+    // Initialize the Cesium Viewer in the HTML element with the `cesiumContainer` ID.
+    //	terrain: Cesium.Terrain.fromWorldTerrain() → load địa hình thực tế.
+    const viewer = new Cesium.Viewer('cesiumContainer', {
+      terrain: Cesium.Terrain.fromWorldTerrain(),
+      geocoder: Cesium.IonGeocodeProviderType.GOOGLE,
+      timeline: true,
+      shouldAnimate: true,
+    });    
+
+
+//Thêm các entity
+
+const benNinhKieu = viewer.entities.add({
+      name: "Bến Ninh Kiều",
+      description : '<p>Địa điểm check-in hot nhất Cần Thơ!</p>',
+      position: Cesium.Cartesian3.fromDegrees(105.7698, 10.0273, 10),
+      point: {
+        pixelSize: 20,
+        color: Cesium.Color.RED,
+        outlineColor: Cesium.Color.WHITE,
+        outlineWidth: 3
+      },
+      label: {
+        text: "Bến Ninh Kiều",
+        font: "20px Arial",
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM, //Chữ ở trên điểm
+        pixelOffset: new Cesium.Cartesian2(0, -30) //Dịch lên trên 30 pixel
+      } 
+    }); 
+
+// 2. Polyline – vẽ đường dọc sông Hậu (glow xanh đẹp)
+viewer.entities.add({
+  name: 'Sông Hậu đoạn Ninh Kiều',
+  polyline: {
+    positions: Cesium.Cartesian3.fromDegreesArray([
+      105.7698, 10.0273,   // Ninh Kiều
+      105.78,   10.02,     // điểm giữa
+      105.79,   10.015     // điểm cuối
+    ]),
+    width: 10,
+    material: new Cesium.PolylineGlowMaterialProperty({
+      glowPower: 0.3,
+      color: Cesium.Color.CYAN
+    })
+  }
+});
+
+// 3. Polygon – vẽ khu Ninh Kiều (màu xanh nhạt trong suốt)
+viewer.entities.add({
+  name: 'Khu vực Ninh Kiều',
+  polygon: {
+    height:0,
+    hierarchy: Cesium.Cartesian3.fromDegreesArray([
+      105.76, 10.03,
+      105.78, 10.03,
+      105.78, 10.02,
+      105.76, 10.02
+    ]),
+    material: Cesium.Color.BLUE.withAlpha(0.4),  // trong suốt 40%
+    outline: true,
+    outlineColor: Cesium.Color.BLUE
+  }
+});
+
+
+// 4. Model 3D – đặt máy bay mẫu bay lơ lửng (dùng model miễn phí của Cesium)
+const mayBay = viewer.entities.add({
+  name: 'Khu vực nuôi tôm',
+  position: Cesium.Cartesian3.fromDegrees(105.7698, 10.0273, 800),
+  model: {
+   // uri: 'https://raw.githubusercontent.com/CesiumGS/cesium/master/Apps/SampleData/models/CesiumAir/Cesium_Air.glb',
+   uri: './assets/AM_Shrimp.glb',
+    minimumPixelSize: 128,  // giữ kích thước khi zoom xa
+    maximumScale: 20000,
+    runAnimations: true, //Note run animation
+  },
+  // Hướng máy bay (heading 90 = Đông)
+  orientation: Cesium.Transforms.headingPitchRollQuaternion(
+    Cesium.Cartesian3.fromDegrees(105.7698, 10.0273, 100),
+    new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(30), 0, 0)
+  )
+});
+
+
+
+//
+
+// try{
+// const osmBuildings = await Cesium.createOsmBuildingsAsync();
+// viewer.scene.primitives.add(osmBuildings);
+// }catch(error){
+//   console.log("Error with 3D Tiles: " + error)
+// }
+
+
+try{
+const googleTileSet = await Cesium.createGooglePhotorealistic3DTileset({
+  onlyUsingWithGoogleGeocoder: true
+});
+viewer.scene.primitives.add(googleTileSet);
+viewer.scene.globe.show = false;
+}catch(error){
+  console.error("Error with Google tile: ", error)
+}
+
+
+viewer.flyTo(mayBay)
+const deviceType = getDeviceType();
+const isLowEndDevice = isLowEndHardware();
+
+if(deviceType === "mobile" || isLowEndDevice){
+  viewer.resolutionScale = 1;
+  viewer.scene.fxaa=false;
+  viewer.shadowMap.enable=false;
+  viewer.scene.highDynamicRange=false;
+  console.log("This is low end device.")
+}
+
+    // viewer.camera.flyTo({
+    //   destination: Cesium.Cartesian3.fromDegrees(105.7698, 10.0273, 2000),
+    //   orientation: {
+    //     heading: Cesium.Math.toRadians(0.0),
+    //     pitch: Cesium.Math.toRadians(-20.0),
+    //     roll: 0.0
+    //   }
+    // });
+
+    
+
+
+  </script>
+ </div>
+</body>
+</html>
