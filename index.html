@@ -40,10 +40,13 @@ function isLowEndHardware(){
     const viewer = new Cesium.Viewer('cesiumContainer', {
       terrain: Cesium.Terrain.fromWorldTerrain(),
       geocoder: Cesium.IonGeocodeProviderType.GOOGLE,
+      
       timeline: true,
       shouldAnimate: true,
     });    
 
+
+viewer.scene.globe.enableLighting = false;
 
 //Thêm các entity
 
@@ -103,8 +106,8 @@ viewer.entities.add({
 });
 
 
-// 4. Model 3D – đặt máy bay mẫu bay lơ lửng (dùng model miễn phí của Cesium)
-const mayBay = viewer.entities.add({
+// 4. Model 3D (dùng model miễn phí của Cesium)
+const myModel = viewer.entities.add({
   name: 'Khu vực nuôi tôm',
   position: Cesium.Cartesian3.fromDegrees(105.7698, 10.0273, 800),
   model: {
@@ -121,7 +124,25 @@ const mayBay = viewer.entities.add({
   )
 });
 
+// Tắt specular hoàn toàn, giữ diffuse IBL
+myModel.model.imageBasedLightingFactor = new Cesium.Cartesian2(1.0, 0.0);
 
+// Tăng lightColor rất mạnh để bù đắp (thử từ 5.0 → 20.0 tùy model)
+myModel.model.lightColor = Cesium.Cartesian3.fromElements(10.0, 10.0, 10.0);  // trắng sáng mạnh
+
+// Fix directional light từ scene (thay vì sun)
+viewer.scene.light = new Cesium.DirectionalLight({
+    direction: new Cesium.Cartesian3(1.0, 1.0, 1.0),  // hướng sáng đều (từ trên + phía trước)
+    color: Cesium.Color.WHITE,
+    intensity: 5.0  // hoặc cao hơn nếu vẫn tối
+});
+
+// Tắt globe lighting để tránh ảnh hưởng ngày/đêm
+viewer.scene.globe.enableLighting = false;
+viewer.scene.highDynamicRange = false;  // tắt HDR → texture sáng hơn, ít tone mapping
+
+//myModel.imageBasedLightingFactor = new Cesium.Cartesian2(1.0, 0.0);
+//myModel.lightColor = Cesium.Cartesian3.fromElements(2.5, 2.5, 2.5);  
 
 //
 
@@ -139,12 +160,19 @@ const googleTileSet = await Cesium.createGooglePhotorealistic3DTileset({
 });
 viewer.scene.primitives.add(googleTileSet);
 viewer.scene.globe.show = false;
+viewer.scene.globe.enableLighting = false;
+viewer.scene.highDynamicRange = false;              // giảm HDR → giảm specular mạnh
+viewer.scene.light = new Cesium.DirectionalLight({
+    direction: new Cesium.Cartesian3(0, 0, 1),      // hướng tùy ý
+    color: Cesium.Color.WHITE,
+    intensity: 0.0                                  // tắt directional light
+});
 }catch(error){
   console.error("Error with Google tile: ", error)
 }
 
 
-viewer.flyTo(mayBay)
+viewer.flyTo(myModel)
 const deviceType = getDeviceType();
 const isLowEndDevice = isLowEndHardware();
 
